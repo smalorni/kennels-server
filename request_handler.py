@@ -1,16 +1,39 @@
-
+import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from views import get_all_animals
-
+from views import get_all_animals, get_single_animal, create_animal
+from views import get_all_locations, get_single_location, create_location
+from views import get_all_employees, get_single_employee, create_employee
+from views import get_all_customers, get_single_customer, create_customer
 # Here's a class. It inherits from another class.
 # For now, think of a class as a container for functions that work together for a common purpose.
 # In this case, that common purpose is to respond to HTTP requests from a client.
 class HandleRequests(BaseHTTPRequestHandler):
+    """Create the above class to respond to requests"""
+    def parse_url(self, path):
+        """Create route paths"""
+        # Just like splitting a string in JavaScript. If the
+        # path is "/animals/1", the resulting list will
+        # have "" at index 0, "animals" at index 1, and "1"
+        # at index 2.
+        path_params = path.split("/")
+        resource = path_params[1]
+        id = None
+
+        # Try to get the item at index 2
+        try:
+            # Convert the string "1" to the integer 1
+            # This is the new parseInt()
+            id = int(path_params[2])
+        except IndexError:
+            pass  # No route parameter exists: /animals
+        except ValueError:
+            pass  # Request had trailing slash: /animals/
+
+        return (resource, id)  # This is a tuple
     # This is a Docstring it should be at the beginning of all classes and functions
     # It gives a description of the class or function
     """Controls the functionality of any GET, PUT, POST, DELETE requests to the server
     """
-
     # Here's a class function
     def _set_headers(self, status):
         # Notice this Docstring also includes information about the arguments passed to the function
@@ -37,36 +60,83 @@ class HandleRequests(BaseHTTPRequestHandler):
 
     # Here's a method on the class that overrides the parent's method.
     # It handles any GET request.
+
+    #Get request for animals, locations, employees, customers
     def do_GET(self):
-        """Handles GET requests to the server
-        """
-        # Set the response code to 'Ok'
+        """Handles Get Requests"""
         self._set_headers(200)
+        response = {}  # Default response
 
-        # Your new console.log() that outputs to the terminal
-        print(self.path)
+        # Parse the URL and capture the tuple that is returned
+        (resource, id) = self.parse_url(self.path)
 
-        # It's an if..else statement, indentation matters
-        if self.path == "/animals":
-            response = get_all_animals()
-        else:
-            response = []
+        if resource == "animals":
+            if id is not None:
+                response = f"{get_single_animal(id)}"
 
-        # This weird code sends a response back to the client
-        self.wfile.write(f"{response}".encode())
+            else:
+                response = f"{get_all_animals()}"
+
+        if resource == "locations":
+            if id is not None:
+                response = f"{get_single_location(id)}"
+
+            else:
+                response = f"{get_all_locations()}"
+
+        if resource == "employees":
+
+            if id is not None:
+                response = f"{get_single_employee(id)}"
+
+            else:
+                response = f"{get_all_employees()}"
+
+        if resource == "customers":
+            if id is not None:
+                response = f"{get_single_customer(id)}"
+
+            else:
+                response = f"{get_all_customers()}"
+
+        self.wfile.write(response.encode())
+
 
     # Here's a method on the class that overrides the parent's method.
     # It handles any POST request.
     def do_POST(self):
-        """Handles POST requests to the server
-        """
-        # Set response code to 'Created'
+        """Handles POST request"""
         self._set_headers(201)
-
         content_len = int(self.headers.get('content-length', 0))
         post_body = self.rfile.read(content_len)
-        response = f"received post request:<br>{post_body}"
-        self.wfile.write(response.encode())
+
+        # Convert JSON string to a Python dictionary
+        post_body = json.loads(post_body)
+
+        # Parse the URL
+        (resource, id) = self.parse_url(self.path)
+
+        # Initialize new animal
+        new_data = None
+
+        # Add a new animal to the list. Don't worry about
+        # the orange squiggle, you'll define the create_animal
+        # function next.
+        if resource == "animals":
+            new_data = create_animal(post_body)
+        # Add a new location to list
+        if resource == "locations":
+            new_data = create_location(post_body)
+        # Add a new employee to list
+        if resource == "employees":
+            new_data = create_employee(post_body)
+        # Add a new customer to list
+        if resource == "customers":
+            new_data = create_customer(post_body)
+
+
+        # Encode the new animal and send in response
+        self.wfile.write(f"{new_data}".encode())
 
     # Here's a method on the class that overrides the parent's method.
     # It handles any PUT request.
