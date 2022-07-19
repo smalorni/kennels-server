@@ -1,6 +1,7 @@
 import sqlite3
 import json
 from models import Employee
+from models.location import Location
 
 EMPLOYEES = [
     {
@@ -28,8 +29,13 @@ def get_all_employees():
                 a.id,
                 a.name,
                 a.address,
-                a.location_id
+                a.location_id,
+                l.name location_name,
+                l.address location_address
+            
             FROM employee a
+            JOIN Location l
+                ON l.id = a.location_id
             """)
 
             # Initialize an empty list to hold all employee representations
@@ -46,6 +52,12 @@ def get_all_employees():
                 # exact order of the parameters defined in the
                 # Employee class above.
                 employee = Employee(row['id'], row['name'], row['address'], row['location_id'])
+
+                # Create Location instance from current row
+                location = Location(row['id'], row['location_name'], row['location_address'])
+
+                # Add dictionary representation of location to employee
+                employee.location = location.__dict__
 
                 employees.append(employee.__dict__)
 
@@ -78,22 +90,24 @@ def get_single_employee(id):
 
             return json.dumps(employee.__dict__)
     
-def create_employee(employee):
-    """Add employee to list"""
-    # Get the id value of the last employee in the list
-    max_id = EMPLOYEES[-1]["id"]
+def create_employee(new_employee):
+    """Create new employee"""
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        db_cursor = conn.cursor()
 
-    # Add 1 to whatever that number is
-    new_id = max_id + 1
+        db_cursor.execute("""
+        INSERT INTO Employee
+            ( name, address, location_id )
+        VALUES 
+            ( ?, ?, ?);
+        """, (new_employee['name'], new_employee['address'],
+              new_employee['location_id'], ))
 
-    # Add an `id` property to the employee dictionary
-    employee["id"] = new_id
+        id = db_cursor.lastrowid
 
-    # Add the employee dictionary to the list
-    EMPLOYEES.append(employee)
+        new_employee['id'] = id
 
-    # Return the dictionary with `id` property added
-    return employee
+    return json.dumps(new_employee)
 
 # Delete employee from list
 def delete_employee(id):
